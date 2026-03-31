@@ -1,0 +1,274 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
+ */
+package CustomerView;
+import CustomerModel.CustomerModelBingkai;
+import java.awt.AlphaComposite;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import javax.swing.ImageIcon;
+import javax.swing.JOptionPane;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import javax.swing.JLabel;
+import javax.swing.SwingConstants;
+/**
+ *
+ * @author AGIL
+ */
+public class CustomerProduk extends javax.swing.JPanel {
+
+    /**
+     * Creates new form CustomerProduk
+     */
+    public CustomerProduk() {
+        initComponents();
+        tampilkanProduk("");
+        pn_utama.setPreferredSize(null);
+        pn_utama.revalidate();
+        pn_utama.repaint();
+    }
+
+private void tampilkanProduk(String keyword) {
+    try {
+        Connection conn = Koneksi.DBKoneksi.getConnection();
+
+        String orderBy = "";
+        String selectedFilter = (String) cmbfilter.getSelectedItem();
+
+        if (selectedFilter.equals("Harga Termurah")) {
+            orderBy = "ORDER BY p.harga ASC";
+        } else if (selectedFilter.equals("Harga Termahal")) {
+            orderBy = "ORDER BY p.harga DESC";
+        }
+
+        String query = "SELECT p.nama, p.harga, p.stok, p.gambar, dk.kategori " +
+                "FROM produk p " +
+                "JOIN detail_kategori dk ON p.detail_kategori_id_kategori = dk.id_kategori " +
+                "WHERE (p.nama LIKE ? OR dk.kategori LIKE ?) " + orderBy;
+
+        PreparedStatement ps = conn.prepareStatement(query);
+        ps.setString(1, "%" + keyword + "%");
+        ps.setString(2, "%" + keyword + "%");
+        ResultSet rs = ps.executeQuery();
+
+        pn_utama.removeAll();
+        pn_utama.setLayout(new GridLayout(0, 5, 10, 10));
+        jScrollPane1.setViewportView(pn_utama);
+
+        boolean ditemukan = false;
+
+        while (rs.next()) {
+            ditemukan = true;
+
+            String nama = rs.getString("nama");
+            String harga = rs.getString("harga");
+            int stok = rs.getInt("stok");
+
+            ImageIcon icon;
+            byte[] gambarBytes = rs.getBytes("gambar");
+            if (gambarBytes != null && gambarBytes.length > 0) {
+                icon = new ImageIcon(gambarBytes);
+            } else {
+                icon = new ImageIcon("assets/imgproduk/default.png");
+            }
+
+            Image originalImg = icon.getImage();
+            if (originalImg.getWidth(null) <= 0 || originalImg.getHeight(null) <= 0) {
+                originalImg = new ImageIcon("assets/imgproduk/default.png").getImage();
+            }
+
+            Image resized = originalImg.getScaledInstance(160, 160, Image.SCALE_SMOOTH);
+
+            if (stok == 0) {
+                resized = buatGambarTransparan(resized, 0.3f);
+            }
+
+            ImageIcon finalIcon = new ImageIcon(resized);
+
+            CustomerModelBingkai model = new CustomerModelBingkai();
+            model.setNamaProduk(nama);
+            model.setHarga(harga);
+            model.setStok(String.valueOf(stok));
+            model.setGambar(finalIcon);
+
+            CustomerBingkaiProdukOnline produkPanel = new CustomerBingkaiProdukOnline();
+            produkPanel.setData(model);
+            pn_utama.add(produkPanel);
+        }
+
+        if (!ditemukan) {
+            JLabel lblTidakDitemukan = new JLabel("Produk tidak ditemukan.", SwingConstants.CENTER);
+            lblTidakDitemukan.setFont(new Font("Arial", Font.BOLD, 16));
+            lblTidakDitemukan.setForeground(Color.GRAY);
+            pn_utama.setLayout(new BorderLayout());
+            pn_utama.add(lblTidakDitemukan, BorderLayout.CENTER);
+        }
+
+        pn_utama.revalidate();
+        pn_utama.repaint();
+
+        rs.close();
+        ps.close();
+        conn.close();
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Gagal menampilkan produk: " + e.getMessage());
+    }
+}
+
+
+private Image buatGambarTransparan(Image image, float opacity) {
+    int width = image.getWidth(null);
+    int height = image.getHeight(null);
+
+    if (width <= 0 || height <= 0) {
+        return image; 
+    }
+
+    BufferedImage buffered = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+    Graphics2D g2d = buffered.createGraphics();
+    g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity));
+    g2d.drawImage(image, 0, 0, null);
+    g2d.dispose();
+
+    return buffered;
+}
+
+
+
+
+
+
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        title = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        txtsearch = new javax.swing.JTextField();
+        btnreset = new javax.swing.JButton();
+        cmbfilter = new javax.swing.JComboBox<>();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        pn_utama = new javax.swing.JPanel();
+
+        title.setBackground(new java.awt.Color(2, 51, 255));
+
+        jLabel1.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        jLabel1.setForeground(new java.awt.Color(255, 255, 255));
+        jLabel1.setText("WELCOME TO OUR STORE - HAPPY SHOPPING  ; )");
+
+        txtsearch.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                txtsearchKeyTyped(evt);
+            }
+        });
+
+        btnreset.setText("Reset");
+        btnreset.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnresetActionPerformed(evt);
+            }
+        });
+
+        cmbfilter.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Filter", "Harga Termurah", "Harga Termahal"}));
+        cmbfilter.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmbfilterActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout titleLayout = new javax.swing.GroupLayout(title);
+        title.setLayout(titleLayout);
+        titleLayout.setHorizontalGroup(
+            titleLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(titleLayout.createSequentialGroup()
+                .addGap(253, 253, 253)
+                .addGroup(titleLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jLabel1)
+                    .addGroup(titleLayout.createSequentialGroup()
+                        .addComponent(cmbfilter, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(txtsearch, javax.swing.GroupLayout.PREFERRED_SIZE, 218, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(btnreset)
+                        .addGap(12, 12, 12)))
+                .addContainerGap(258, Short.MAX_VALUE))
+        );
+        titleLayout.setVerticalGroup(
+            titleLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(titleLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 42, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(titleLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(txtsearch, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnreset)
+                    .addComponent(cmbfilter, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(31, Short.MAX_VALUE))
+        );
+
+        pn_utama.setBackground(new java.awt.Color(255, 204, 255));
+        pn_utama.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        pn_utama.setLayout(new java.awt.GridBagLayout());
+        jScrollPane1.setViewportView(pn_utama);
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        this.setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(title, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(jScrollPane1)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(title, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, 0)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 486, Short.MAX_VALUE)
+                .addGap(0, 0, 0))
+        );
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void txtsearchKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtsearchKeyTyped
+        String keyword = txtsearch.getText();
+        tampilkanProduk(keyword); 
+    }//GEN-LAST:event_txtsearchKeyTyped
+
+    private void btnresetActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnresetActionPerformed
+        txtsearch.setText("");
+        tampilkanProduk("");
+        cmbfilter.setSelectedIndex(0);
+    }//GEN-LAST:event_btnresetActionPerformed
+
+    private void cmbfilterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbfilterActionPerformed
+        String keyword = txtsearch.getText();
+        tampilkanProduk(keyword);
+    }//GEN-LAST:event_cmbfilterActionPerformed
+
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnreset;
+    private javax.swing.JComboBox<String> cmbfilter;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JPanel pn_utama;
+    private javax.swing.JPanel title;
+    private javax.swing.JTextField txtsearch;
+    // End of variables declaration//GEN-END:variables
+}

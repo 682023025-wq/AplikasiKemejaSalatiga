@@ -1,0 +1,179 @@
+package CustomerView;
+
+import Koneksi.DBKoneksi;
+import CustomerController.CustomerKirimStrukEmail;
+import CustomerController.CustomerStruk;
+import CustomerController.CustomerPembayaran;
+import java.awt.BorderLayout;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import javax.swing.*;
+import javafx.application.Platform;
+import javafx.embed.swing.JFXPanel;
+import javafx.scene.Scene;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import javax.sound.sampled.*;
+ 
+public class CustomerLinkPembayaran extends javax.swing.JFrame {
+    private final String redirectUrl;
+    private final String customerId;
+    private String orderId;
+    private JFXPanel jfxPanel;
+    private static boolean javafxStarted = false;
+
+    public CustomerLinkPembayaran(String redirectUrl, String customerId) {
+        this.redirectUrl  = redirectUrl;
+        this.customerId   = customerId;
+        initComponents();
+        setTitle("Pembayaran Midtrans");
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        initJavaFX();
+        initWebView(redirectUrl);
+    }
+
+    private void initJavaFX() {
+        if (!javafxStarted) {
+            javafxStarted = true;
+            Platform.startup(() -> {/* no-op */});
+            Platform.setImplicitExit(false);
+        }
+    }
+
+    private void initWebView(String url) {
+        // clear panel
+        jPanel1.removeAll();
+        jPanel1.setLayout(new BorderLayout());
+
+        jfxPanel = new JFXPanel();
+        jPanel1.add(jfxPanel, BorderLayout.CENTER);
+        jPanel1.revalidate();
+        jPanel1.repaint();
+
+        Platform.runLater(() -> {
+            WebView webView = new WebView();
+            WebEngine engine = webView.getEngine();
+            engine.load(url);
+
+            // Listener perubahan URL
+            engine.locationProperty().addListener((obs, oldUrl, newUrl) -> {
+                System.out.println("URL berubah: " + newUrl);
+                if (newUrl != null &&
+                   (newUrl.contains("status_code=200") ||
+                    newUrl.contains("finish")       ||
+                    newUrl.contains("success"))) {
+                    Platform.runLater(() -> updateStatusLunas());
+                }
+            });
+
+            Scene scene = new Scene(webView);
+            jfxPanel.setScene(scene);
+        });
+    }
+
+    private void playSuccessSound() {
+        try {
+            AudioInputStream audioInput = AudioSystem.getAudioInputStream(
+                getClass().getResource("/assets/yippe.wav"));
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioInput);
+            clip.start();
+        } catch (Exception e) {
+            System.err.println("Gagal memutar suara notifikasi: " + e.getMessage());
+        }
+    }
+
+   
+ private void updateStatusLunas() {
+    try (Connection conn = DBKoneksi.getConnection()) {
+        String pendingOrderId = CustomerPembayaran.getOrderIdPendingByCustomer(conn, customerId);
+        if (pendingOrderId == null) return;
+        this.orderId = pendingOrderId;
+
+        String sql = "UPDATE pembayaran SET status = 'lunas' WHERE order_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            if (ps.executeUpdate() > 0) {
+
+                CustomerPembayaran.kurangiStokProduk(conn, orderId);
+
+                String isiStruk = CustomerStruk.generateIsiStrukCustomer(conn, orderId);
+                String email = CustomerStruk.getEmailCustomerByOrderId(conn,
+                    CustomerPembayaran.getCustomerIdByOrderId(conn, orderId));
+                CustomerKirimStrukEmail.kirimStrukLangsung(email, "Struk Pembayaran #" + orderId, isiStruk);
+
+                SwingUtilities.invokeLater(() -> {
+                    playSuccessSound();
+                    CustomerHomeCustomer.getInstance().tampilkanTransaksiCustomer();
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "Selamat! Pembayaran Anda berhasil.\nStruk telah dikirim ke email.",
+                        "Pembayaran Berhasil",
+                        JOptionPane.INFORMATION_MESSAGE
+                    );
+                    this.dispose();
+                    new CustomerStrukCustomer(orderId).setVisible(true);
+                });
+            }
+        }
+    } catch (Exception ex) {
+        ex.printStackTrace();
+        SwingUtilities.invokeLater(() ->
+            JOptionPane.showMessageDialog(this,
+                "Error saat update status lunas:\n" + ex.getMessage(),
+                "Error",
+                JOptionPane.ERROR_MESSAGE));
+    }
+}
+
+
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 600, Short.MAX_VALUE)
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 600, Short.MAX_VALUE)
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    /**
+     * @param args the command line arguments
+     */
+
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel jPanel1;
+    // End of variables declaration//GEN-END:variables
+}
